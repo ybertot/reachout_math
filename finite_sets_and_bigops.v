@@ -180,6 +180,24 @@ apply min'.
 intros x s'x; apply ssubl.
 now destruct s'x.
 Qed.
+Search In(_++_).
+
+Lemma Union_preserves_Finite [T : Type](s1 : T -> Prop)(s2 : T -> Prop):
+(finite s1 /\ finite s2)  <-> finite (fun x =>  s1 x \/ s2 x ).  
+Proof.
+Admitted.
+
+Lemma Intersection_preserves_Finite [T : Type](s1 : T -> Prop)(s2 : T -> Prop):
+(finite s1 /\ finite s2)  <-> finite (fun x =>  s1 x /\ s2 x ).
+Admitted.
+
+Lemma Partitions_Finite [T : Type] (s : T -> Prop) :
+finite s <-> (exists l, (forall x, s x -> In x l) /\ 
+                (forall l',length l' <= length l   -> 
+                    forall x, s x -> In x l')).
+Admitted.
+
+
 
 Lemma finite_has_minimal_list [T : Type] (s : T -> Prop) :
   finite s <-> (exists l, (forall x, s x -> In x l) /\ 
