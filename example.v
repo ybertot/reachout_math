@@ -1,53 +1,89 @@
+(* Preparatory work, not for the eyes of students. *)
+
 Require Import Reals Coquelicot.Coquelicot Interval.Tactic Lra.
 
 Open Scope R_scope.
 
-Ltac check := solve[tauto | field; lra | lra | interval | nra |
-         firstorder (solve [lra | interval; interval])].
+Ltac Fix name := 
+  match goal with
+   | |- _ -> _ => fail "statement should be a universal quantification"
+   | |- forall _, _ => intros n
+   end.
+
+Ltac assume f :=
+  match goal with |- _ -> ?c =>
+  let x := fresh "assumed_fact" in
+  assert (x : f -> c);[intros x | exact x]
+  end.
+
+Ltac check := solve[auto | tauto | field; lra | lra | interval | nra ].
+
+Ltac now_prove f := enough f by check.
+
+Ltac derivative_prover := auto_derive; auto.
+
+Lemma Mean_Value_Theorem :
+   forall (f f' : R -> R) (a b : R),
+   a < b /\ (forall c, a <= c <= b -> is_derive f c (f' c)) ->
+   exists c, f b - f a = f' c * (b - a) /\ a < c < b.
+Proof.
+intros f f' a b [altb ff']; apply MVT_cor2; auto.
+now intros c cint; rewrite <- is_derive_Reals; apply ff'.
+Qed.
+
+Lemma cos_decreasing x y :
+  0 <= x <= PI /\ 0 <= y <= PI /\ x < y -> cos y < cos x.
+Proof.
+intros; apply cos_decreasing_1; tauto.
+Qed.
+
+Lemma cos_decreasing' x y :
+ 0 <= x <= PI /\ 0 <= y <= PI -> x < y <-> cos y < cos x.
+Proof.
+intros; split.
+  apply cos_decreasing_1; tauto.
+apply cos_decreasing_0; tauto.
+Qed.
+
+(* End of preparatory work. *)
 
 Lemma sin_gt_x x : 0 < x -> sin x < x.
 Proof.
 Fail check.
-assert (sin x <= 1)
-    by check.
-assert (1 < PI / 2)
-    by check.
-assert (1 < x -> sin x < x)
-    by check.
-enough (0 < x <= PI / 2 -> sin x < x)
-    by check.
-intros xlehalfpi.  (* until the end of the proof. *)
+assert (right_part : 1 < x -> sin x < x).
+  assert (sin x <= 1)              by check.
+  check.
+enough (left_part : 0 < x <= 1 -> sin x < x)   by check.
+assume (0 < x <= 1).
+now_prove (sin x < x).
 pose (f y := y - sin y).
 assert (f 0 = 0).
     unfold f; rewrite sin_0.
     check.
-assert (main : exists c, (f x - f 0 = (1 - cos c) * (x - 0)) /\
-          0 < c < x).
-    apply MVT_cor2.
-    - check.
-  enough (forall c, derivable_pt_lim f c (1 - cos c)) by check.
-      intros c.
-      unfold f; auto_derive.
-      - check.
-      check.
-destruct main as [c [f_equality [c_gt_0 c_lt_x]]].
-Check (f_equality : f x - f 0 = (1 - cos c) * (x - 0)).
-Check (c_gt_0 : 0 < c).
-Check (c_lt_x : c < x).
 enough (0 < f x)
     by (unfold f in *; check).
 enough (0 < f x - f 0)
     by check.
+assert (exists c, (f x - f 0 = (1 - cos c) * (x - 0)) /\
+          0 < c < x) as [c main].
+    apply Mean_Value_Theorem.
+    assert (0 < x) by check.
+  split.
+    check.
+  enough (derf : forall c : R, is_derive f c (1 - cos c)) by check.
+      Fix c.
+      unfold f; derivative_prover.
+      check.
+assert (f_equality : f x - f 0 = (1 - cos c) * (x - 0)) by check.
 enough (0 < (1 - cos c) * (x - 0))
     by (rewrite f_equality; check).
-assert (c < PI / 2)
-    by check.
-enough (cos c < 1)
-     by check.
-Fail check.
 enough (cos c < cos 0)
      by (rewrite cos_0 in *; check).
-apply cos_decreasing_1; check.
+apply cos_decreasing'.
+Fail check.
+repeat split; try check.
+interval_intro PI.
+check.
 Qed.
 
 Section sum_n_first_natural_numbers.
