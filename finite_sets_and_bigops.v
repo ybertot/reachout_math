@@ -19,13 +19,13 @@ split; intros [l char_sl].
 now exists l; intros x xins; apply char_sl; left.
 Qed.
 
+Definition Pcard [T : Type] (s : T -> Prop) (n : nat) :=
+ (exists l, (forall x, s x -> In x l) /\ n = length l) /\
+ (forall l, (forall x, s x -> In x l) -> n <= length l).
 
 Definition card [T : Type] (s : T -> Prop) :=
-  (epsilon (inhabits 0)
-     (fun n : nat =>
-        (exists l,  (forall x, s x -> In x l) /\ n = length l) /\
-        (forall l, (forall x, s x -> In x l) -> n <= length l))).
-Search epsilon.
+  (epsilon (inhabits 0) (Pcard s)).
+
 Lemma card_def: forall T : Type, forall s : T-> Prop, (exists n:nat,
  (exists l,  (forall x, s x -> In x l) /\ n = length l) /\
         (forall l, (forall x, s x -> In x l) -> n <= length l))-> 
@@ -42,9 +42,89 @@ About epsilon_spec .
   cardinal est bien défini pour tous les ensembles finis. *)
 
 Lemma card_0[T: Type]: forall s: T-> Prop, ( forall x ,~s x)-> card s = 0.
-  Proof.
+Proof.
+intros s sempty.
+assert (cards0 : Pcard s 0).
+  split.
+    exists nil.
+    split.
+      now intros x sx; case (sempty x).
+    easy.
+  intros l _; apply Nat.le_0_l.
+destruct (card_def _ _ (ex_intro _ 0 cards0)) as [_ min].
+enough (cle0 : card s <= 0) by now apply eq_sym; apply le_n_0_eq.
+now change 0 with (length (@nil T)); apply min; intros x sx; case (sempty x).
+Qed.
 
-  Admitted.
+Inductive elem_removed [T : Type] (x : T) : list T -> list T -> Prop :=
+  remove_one : forall l, elem_removed x l (x :: l)
+| remove_extra : forall y l1 l2, 
+   elem_removed x l1 l2 ->
+   elem_removed x (y :: l1) (y :: l2).
+
+Lemma remove_elem [T : Type] (x : T) (l : list T) :
+  In x l -> exists l1, elem_removed x l1 l.
+Proof.
+induction l as [ | y l' Ih].
+  easy.
+simpl; intros [yisx | yinl'].
+  exists l'; rewrite yisx; apply remove_one.
+destruct (Ih yinl') as [l2 Pl2].
+now exists (y :: l2); apply remove_extra.
+Qed.
+
+Lemma remove_length [T : Type] (x : T) (l1 l2 : list T) :
+  elem_removed x l1 l2 -> length l2 = S (length l1).
+Proof.
+induction 1 as [ | a l1 l2 erl1l2 Ih];[easy | ].
+now simpl; rewrite Ih.
+Qed.
+
+Lemma elem_removed_in [T : Type] (x : T) (l1 l2 : list T) (y : T) :
+  elem_removed x l1 l2 ->
+  In y l2 -> y = x \/ In y l1.
+Proof.
+induction 1 as [ | a l1 l2 erl1l2 Ih].
+  simpl; intros [yisx | yinl1];[now left; rewrite yisx | now right].
+simpl; intros [aisy | ainl2].
+  now right; left.
+destruct (Ih ainl2) as [yisx | yinl1].
+  now left.
+now right; right.
+Qed.
+
+Lemma card_s[T: Type]: forall s: T-> Prop, forall n, forall x : T,
+  Pcard s n ->
+  ~s x -> Pcard (fun y => y = x \/ s y) (S n).
+Proof.
+intros s n x cardsn xout.
+destruct cardsn as [[wl [wlin wls]] minc].
+split.
+  exists (x :: wl); split.
+    now intros y [yisx | sy]; simpl;[left | right]; auto.
+  now simpl; rewrite <-wls.
+intros l lcovers.
+assert (xinl : In x l).
+  now apply lcovers; left.
+destruct (remove_elem x l xinl) as [l' Pl'].
+rewrite (remove_length _ _ _ Pl').
+apply le_n_S.
+apply minc.
+intros y sy.
+assert (yl : In y l).
+  now apply lcovers; right.
+destruct (elem_removed_in _ l' _ y Pl' yl) as [yisx | yinl'];[ | easy].
+case xout.
+now rewrite <- yisx.
+Qed.
+
+Lemma finite_Pcard [T : Type] (s : T -> Prop) :
+  finite s -> exists n, Pcard s n.
+Proof.
+intros [l Pl]; revert Pl.
+induction l as [ | a l' Ih].
+  intros empty.
+  exists 0.
 
 Lemma finite_has_minimal_list [T : Type] (s : T -> Prop) :
   finite s <-> (exists l, (forall x, s x -> In x l) /\ 
