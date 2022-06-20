@@ -25,9 +25,26 @@ Definition card [T : Type] (s : T -> Prop) :=
      (fun n : nat =>
         (exists l,  (forall x, s x -> In x l) /\ n = length l) /\
         (forall l, (forall x, s x -> In x l) -> n <= length l))).
-
+Search epsilon.
+Lemma card_def: forall T : Type, forall s : T-> Prop, (exists n:nat,
+ (exists l,  (forall x, s x -> In x l) /\ n = length l) /\
+        (forall l, (forall x, s x -> In x l) -> n <= length l))-> 
+(exists l,  (forall x, s x -> In x l) /\ card s = length l) /\
+        (forall l, (forall x, s x -> In x l) -> card s <= length l).
+Proof.
+intros T s.
+Fail apply epsilon_spec.
+unfold card.
+apply (epsilon_spec(inhabits 0)).
+Qed.
+About epsilon_spec .
 (* Je pense que la preuve suivante sera nécessaire pour montrer que le
   cardinal est bien défini pour tous les ensembles finis. *)
+
+Lemma card_0[T: Type]: forall s: T-> Prop, ( forall x ,~s x)-> card s = 0.
+  Proof.
+
+  Admitted.
 
 Lemma finite_has_minimal_list [T : Type] (s : T -> Prop) :
   finite s <-> (exists l, (forall x, s x -> In x l) /\ 
