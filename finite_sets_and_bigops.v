@@ -1,4 +1,4 @@
-Require Import List Arith Classical ClassicalEpsilon.
+Require Import List Arith Classical ClassicalEpsilon Lia.
 
 Definition finite [T : Type] (s : T -> Prop) := 
   exists l : list T, forall x, s x -> In x l.
@@ -121,10 +121,65 @@ Qed.
 Lemma finite_Pcard [T : Type] (s : T -> Prop) :
   finite s -> exists n, Pcard s n.
 Proof.
-intros [l Pl]; revert Pl.
+intros [l Pl]; revert s Pl.
 induction l as [ | a l' Ih].
-  intros empty.
-  exists 0.
+  intros s empty.
+    exists 0.
+  split.
+    exists nil; split;[ | easy].
+    assumption.
+  now intros l _; apply le_0_n.
+simpl.
+intros s ssub.
+pose (s' := fun x => s x /\ x <> a).
+assert (s'sub : forall x, s' x -> In x l').
+  intros x s'x.
+  assert (sx : s x) by now destruct s'x.
+  destruct (ssub _ sx) as [aisx | xinl]; auto.
+  now rewrite <- aisx in s'x; destruct s'x as [_ abs]; case abs.
+destruct (Ih s' s'sub) as [n' [[wl [s'subw n'w]] min']].
+case (classic (s a)) as [sa | ans].
+  exists (S n').
+  split.
+    exists (a :: wl).
+    split.
+      intros x sx.
+      case (classic (x = a)) as [xisa | xna].
+        now simpl; rewrite xisa; auto.
+      simpl; right.
+      apply s'subw.
+      now split; auto.
+    now simpl; rewrite n'w.
+  intros l ssubl.
+  assert (exists l2,  elem_removed a l2 l) as [l2 Pl2].
+    apply remove_elem.
+    apply ssubl.
+    exact sa.
+  assert (Pl2' := Pl2).
+  apply remove_length in Pl2.
+  assert (minl2 : n' <= length l2).
+    apply min'.
+    intros x [sx xna].
+    apply (elem_removed_in _ _ _ x) in Pl2'.
+      destruct Pl2' as [xisa | xinl2].
+        now case xna.
+      easy.
+    now apply ssubl; apply sx.
+  lia.
+exists n'.
+assert (ss' : forall x, s x -> s' x).
+  intros x sx; split;[easy | ].
+  now intros xisa; rewrite xisa in sx; case ans.
+split.
+  exists wl.
+  split;[ | easy].
+  intros x sx; apply s'subw.
+  now apply ss'.
+intros l ssubl.
+apply min'.
+intros x s'x; apply ssubl.
+now destruct s'x.
+Qed.
 
 Lemma finite_has_minimal_list [T : Type] (s : T -> Prop) :
   finite s <-> (exists l, (forall x, s x -> In x l) /\ 
