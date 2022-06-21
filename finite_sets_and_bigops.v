@@ -180,22 +180,51 @@ apply min'.
 intros x s'x; apply ssubl.
 now destruct s'x.
 Qed.
-Search In(_++_).
+Search (_->_\/_).
 
 Lemma Union_preserves_Finite [T : Type](s1 : T -> Prop)(s2 : T -> Prop):
 (finite s1 /\ finite s2)  <-> finite (fun x =>  s1 x \/ s2 x ).  
 Proof.
-Admitted.
+split.
+  intros [f1 f2].
+  unfold finite in *.
+  destruct f1 as [LIh1 H1].
+  destruct f2 as [LIh2 H2].
+    exists (LIh1++LIh2).
+    intros x H'.
+      destruct H'.
+    apply (in_or_app LIh1 LIh2 x) ;left ;apply H1;exact H.
+  apply (in_or_app LIh1 LIh2 x) ;right ;apply H2;exact H.
+intros [L Ih].
+  unfold finite in *.
+    split;exists L; intros x H; apply Ih.
+  left; exact H.
+right; exact H.
+Qed.
+
 
 Lemma Intersection_preserves_Finite [T : Type](s1 : T -> Prop)(s2 : T -> Prop):
-(finite s1 /\ finite s2)  <-> finite (fun x =>  s1 x /\ s2 x ).
-Admitted.
+(finite s1 \/ finite s2)  -> finite (fun x =>  s1 x /\ s2 x ).
+Proof.
+intros.
+unfold finite in *.
+destruct H.
+destruct H as [L1 Ih1];exists L1;intros x [H1 H2];apply Ih1;exact H1.
+destruct H as [L2 Ih2];exists L2;intros x [H1 H2];apply Ih2;exact H2.
+Qed.
 
-Lemma Partitions_Finite [T : Type] (s : T -> Prop) :
-finite s <-> (exists l, (forall x, s x -> In x l) /\ 
-                (forall l',length l' <= length l   -> 
-                    forall x, s x -> In x l')).
-Admitted.
+Lemma Subset_Finite [T : Type] (s s' : T -> Prop) :
+ (forall x, s' x -> s x) ->( finite s -> finite s') .
+Proof.
+intros Hsubset Hf.
+unfold finite in *.
+destruct Hf as [L Ih].
+exists L.
+intros.
+apply Ih.
+apply Hsubset.
+exact H.
+Qed.
 
 
 
@@ -203,6 +232,18 @@ Lemma finite_has_minimal_list [T : Type] (s : T -> Prop) :
   finite s <-> (exists l, (forall x, s x -> In x l) /\ 
                 (forall l',  (forall x, s x -> In x l') -> 
                     length l <= length l')).
+Proof.
+assert (right_to_left : (exists l, (forall x, s x -> In x l) /\ 
+                (forall l',  (forall x, s x -> In x l') -> 
+                    length l <= length l')) -> finite s).
+  intros [l Pl].
+  destruct Pl as [Pl1 _].
+  exists l; exact Pl1.
+split;[ | auto].
+clear right_to_left.
+intros fs.
+assert (tmp := finite_Pcard s fs).
+unfold Pcard in tmp.
 Admitted.
 
 Definition enum [T : Type] (s : T -> Prop) :=
@@ -215,6 +256,11 @@ Definition enum [T : Type] (s : T -> Prop) :=
 Lemma finite_enum_card [T : Type] (s : T -> Prop) :
   finite s -> card s = length (enum s).
 Proof.
+Admitted.
+
+Lemma finite_enum_included [T : Type](s : T -> Prop)
+  finite s -> (forall x, In x (enum s) -> s x)
+
 
 
 
