@@ -1,5 +1,6 @@
 Require Import List Arith Classical ClassicalEpsilon Lia.
 
+
 Definition finite [T : Type] (s : T -> Prop) := 
   exists l : list T, forall x, s x -> In x l.
 
@@ -180,7 +181,6 @@ apply min'.
 intros x s'x; apply ssubl.
 now destruct s'x.
 Qed.
-Search (_->_\/_).
 
 Lemma Union_preserves_Finite [T : Type](s1 : T -> Prop)(s2 : T -> Prop):
 (finite s1 /\ finite s2)  <-> finite (fun x =>  s1 x \/ s2 x ).  
@@ -244,7 +244,14 @@ clear right_to_left.
 intros fs.
 assert (tmp := finite_Pcard s fs).
 unfold Pcard in tmp.
-Admitted.
+destruct tmp as [n [Htmp1 Htmp2]].
+destruct Htmp1 as [L H1].
+exists L.
+destruct H1 as [fL nth].
+rewrite <-nth.
+auto.
+Qed.
+
 
 Definition enum [T : Type] (s : T -> Prop) :=
   epsilon (inhabits nil)
@@ -256,10 +263,21 @@ Definition enum [T : Type] (s : T -> Prop) :=
 Lemma finite_enum_card [T : Type] (s : T -> Prop) :
   finite s -> card s = length (enum s).
 Proof.
+intros fs.
+unfold card.
+unfold enum.
+assert (tmp := finite_Pcard s fs).
+unfold Pcard in *.
 Admitted.
 
-Lemma finite_enum_included [T : Type](s : T -> Prop)
-  finite s -> (forall x, In x (enum s) -> s x)
+Lemma finite_enum_included [T : Type](s : T -> Prop):
+  finite s -> (forall x, In x (enum s) -> s x).
+Proof.
+intros fs x H.
+destruct fs as [L Hfs].
+unfold enum in *.
+Admitted.
+
 
 
 
