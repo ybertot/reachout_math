@@ -226,12 +226,28 @@ apply Hsubset.
 exact H.
 Qed.
 
+Definition Penum [T : Type] (s : T -> Prop) (l : list T) :=
+ (forall x, s x -> In x l) /\
+ (forall l',  (forall x, s x -> In x l') -> length l <= length l').
+
+Definition enum [T : Type] (s : T -> Prop) :=
+  (epsilon (inhabits nil) (Penum s)).
+
+Lemma enum_def: forall T : Type, forall s : T-> Prop, (exists l:list T,
+((forall x, s x -> In x l) /\
+ (forall l',  (forall x, s x -> In x l') -> length l <= length l')))->
+(forall x, s x -> In x (enum s)) /\
+ (forall l',  (forall x, s x -> In x l') -> length (enum s) <= length l').
+Proof.
+intros T s.
+unfold enum.
+apply (epsilon_spec(inhabits (nil : list T))).
+Qed.
+
 
 
 Lemma finite_has_minimal_list [T : Type] (s : T -> Prop) :
-  finite s <-> (exists l, (forall x, s x -> In x l) /\ 
-                (forall l',  (forall x, s x -> In x l') -> 
-                    length l <= length l')).
+  finite s <-> exists l, Penum s l.
 Proof.
 assert (right_to_left : (exists l, (forall x, s x -> In x l) /\ 
                 (forall l',  (forall x, s x -> In x l') -> 
@@ -248,34 +264,43 @@ destruct tmp as [n [Htmp1 Htmp2]].
 destruct Htmp1 as [L H1].
 exists L.
 destruct H1 as [fL nth].
+unfold Penum.
 rewrite <-nth.
 auto.
 Qed.
-
-
-Definition enum [T : Type] (s : T -> Prop) :=
-  epsilon (inhabits nil)
-    (fun l : list T => 
-       (exists l, (forall x, s x -> In x l) /\ 
-                (forall l',  (forall x, s x -> In x l') -> 
-                    length l <= length l'))).
 
 Lemma finite_enum_card [T : Type] (s : T -> Prop) :
   finite s -> card s = length (enum s).
 Proof.
 intros fs.
-unfold card.
-unfold enum.
-assert (tmp := finite_Pcard s fs).
-unfold Pcard in *.
-Admitted.
+assert (card_tmp := finite_Pcard s fs).
+assert (tmp := card_def _ _ card_tmp).
+assert (enum_tmp := fs).
+rewrite (finite_has_minimal_list s ) in enum_tmp.
+assert (tmp' := enum_def _ _ enum_tmp).
+destruct tmp as [tmpH1 tmpH2].
+destruct tmpH1 as [L Ih1].
+destruct Ih1 as [null H_card].
+destruct tmp' as [tmpH1' tmpH2'].
+apply tmpH2 in tmpH1'.
+apply tmpH2' in null.
+rewrite <- H_card in null.
+auto with arith.
+Qed.
 
 Lemma finite_enum_included [T : Type](s : T -> Prop):
   finite s -> (forall x, In x (enum s) -> s x).
 Proof.
 intros fs x H.
-destruct fs as [L Hfs].
-unfold enum in *.
+assert (enum_tmp := fs).
+rewrite (finite_has_minimal_list s ) in enum_tmp.
+assert (tmp' := enum_def _ _ enum_tmp).
+destruct tmp' as [tmpH1' tmpH2'].
+assert (th := finite_enum_card s fs).
+destruct fs as [L Ih].
+apply tmpH2' in Ih.
+rewrite <-th in Ih.
+
 Admitted.
 
 
