@@ -300,11 +300,48 @@ assert (th := finite_enum_card s fs).
 destruct fs as [L Ih].
 apply tmpH2' in Ih.
 rewrite <-th in Ih.
+destruct (remove_elem _ _ H) as [enum' Penum'].
+assert (lenum' := remove_length _ _ _ Penum').
+case (classic (s x)); auto; intros abs.
+assert (abs': forall x, s x -> In x enum').
+  intros y sy.
+  destruct (elem_removed_in _ _ _ _ Penum' (tmpH1' _ sy)) as [yx | yin]; auto.
+  now case abs; rewrite <- yx.
+assert (abs2 : length (enum s) <= length enum').
+  apply tmpH2'; auto.
+  rewrite lenum' in abs2.
+now case (Nat.nle_succ_diag_l (length enum')).
+Qed.
 
+Lemma card_not_0_has_elem [T : Type] (s : T -> Prop) :
+  finite s -> card s <> 0 -> exists a, s a.
+Proof.
+intros fs csn0.
+assert (lenum := finite_enum_card s fs).
+assert (ins := finite_enum_included s fs).
+destruct (enum s) as [ | a tl].
+  rewrite lenum in csn0.
+  easy.
+exists a.
+apply ins.
+simpl.
+left.
+easy.
+Qed.
+
+Parameter union : forall [T : Type], (T -> Prop) -> (T -> Prop) -> (T -> Prop).
+
+Parameter intersection :
+  forall [T : Type], (T -> Prop) -> (T -> Prop) -> (T -> Prop).
+
+Parameter singleton : forall [T : Type], T -> T -> Prop.
+
+Lemma card_add_elem [T : Type] (s : T -> Prop) (a : T):
+  finite s -> ~ s a -> card (union s (singleton a)) = card s + 1.
+(* Ici, la preuve est déjà faite, c'est dans card_s *)
 Admitted.
 
-
-
-
-
-
+Lemma card_union [T : Type] (s1 s2 : T -> Prop) :
+  finite s1 -> finite s2 ->
+  card (union s1 s2) = card s1 + card s2 - card (intersection s1 s2).
+Admitted.
