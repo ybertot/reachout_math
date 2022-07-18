@@ -314,23 +314,31 @@ rewrite <-nth.
 auto.
 Qed.
 
+Lemma enum_card [T : Type] (s : T -> Prop) (l : list T):
+  Penum s l -> card s = length l.
+Proof.
+intros en.
+assert (fs : finite s).
+  now exists l; destruct en as [it _].
+assert (card_tmp := finite_Pcard s fs).
+assert (tmp := card_def _ card_tmp); clear card_tmp.
+destruct tmp as [tmpH1 tmpH2].
+destruct en as [tmpH1' tmpH2'].
+apply tmpH2 in tmpH1'.
+destruct tmpH1 as [l' [Pl' cardv]].
+apply tmpH2' in Pl'.
+rewrite <- cardv in Pl'.
+lia.
+Qed.
+
+
 Lemma finite_enum_card [T : Type] (s : T -> Prop) :
   finite s -> card s = length (enum s).
 Proof.
 intros fs.
-assert (card_tmp := finite_Pcard s fs).
-assert (tmp := card_def _ card_tmp).
-assert (enum_tmp := fs).
-rewrite (finite_has_minimal_list s ) in enum_tmp.
-assert (tmp' := enum_def _ enum_tmp).
-destruct tmp as [tmpH1 tmpH2].
-destruct tmpH1 as [L Ih1].
-destruct Ih1 as [null H_card].
-destruct tmp' as [tmpH1' tmpH2'].
-apply tmpH2 in tmpH1'.
-apply tmpH2' in null.
-rewrite <- H_card in null.
-auto with arith.
+apply enum_card.
+apply enum_def.
+now rewrite <- finite_has_minimal_list.
 Qed.
 
 Lemma finite_enum_included [T : Type](s : T -> Prop):
@@ -400,7 +408,46 @@ exact card_add.
 Qed.
 
 Lemma card_inter_compl [T : Type] (s : T -> Prop) (a : T):
+ finite s ->
  s a -> card (intersection s (compl (singleton a)) )= card s -1.
+Proof.
+intros fs sa.
+assert (exists l, Penum s l) as [l Pl].
+  now rewrite <- finite_has_minimal_list.
+assert (csl := enum_card _ _ Pl).
+assert (exists l1, elem_removed a l1 l) as [l' Pl'].
+  apply remove_elem.
+  now destruct Pl as [it _]; apply it.
+assert (len_rel := remove_length _ _ _ Pl').
+rewrite csl.
+rewrite len_rel.
+replace (S (length l') - 1) with (length l') by lia.
+apply enum_card.
+split.
+  intros x [xins xnota].
+  assert (xinl : In x l).
+  now destruct Pl as [it _]; apply it.
+  destruct (elem_removed_in _ _ _ _ Pl' xinl).
+    case xnota; assumption.
+  assumption.
+intros l2.
+intros Pl2.
+set (l3 := a :: l2).
+assert (ssubl3 : forall x, s x -> In x l3).
+  intros x.
+  intros sx.
+  unfold l3.
+  case (classic (x = a)).
+    simpl.
+    intros xa; rewrite xa; left; auto.
+   intros xnota.
+   simpl; right.
+    apply Pl2; split.
+      assumption.
+    assumption.
+   assert (length l <= length l3).
+  
+
 Admitted.
 
 
