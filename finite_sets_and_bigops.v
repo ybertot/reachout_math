@@ -446,10 +446,13 @@ assert (ssubl3 : forall x, s x -> In x l3).
       assumption.
     assumption.
    assert (length l <= length l3).
-  
-
-Admitted.
-
+   unfold Penum in Pl.
+   destruct Pl as [H1 H2].
+   apply H2 in ssubl3.
+   exact ssubl3.
+assert (length l3 = S(length l2)) by auto.
+lia.
+Qed.
 
 Lemma card_union [T : Type] (s1 s2 : T -> Prop) :
   finite s1 -> finite s2 ->
@@ -457,7 +460,6 @@ Lemma card_union [T : Type] (s1 s2 : T -> Prop) :
 Proof.
 Admitted.
 End FiniteSetFacts.
-
 
 
 
