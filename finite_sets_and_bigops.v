@@ -446,6 +446,7 @@ assert (ssubl3 : forall x, s x -> In x l3).
       assumption.
     assumption.
    assert (length l <= length l3).
+
    unfold Penum in Pl.
    destruct Pl as [H1 H2].
    apply H2 in ssubl3.
