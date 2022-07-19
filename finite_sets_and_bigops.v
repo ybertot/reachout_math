@@ -395,6 +395,27 @@ left.
 easy.
 Qed.
 
+Lemma Penum_add_elem [T : Type] (s : T -> Prop) (a : T) (l : list T):
+  Penum s l -> ~ s a -> Penum (union (singleton a) s) (a :: l).
+Proof.
+intros en nsa.
+split.
+  intros x [ax | sx];[ rewrite ax; left; auto |].
+  now simpl; right; destruct en as [it _]; apply it.
+intros l' usubl'.
+assert (al' : In a l').
+  apply usubl'; left; reflexivity.
+destruct (remove_elem a l' al') as [l2 Pl2].
+assert (sl2 : forall x, s x -> In x l2).
+  intros x sx.
+  destruct (elem_removed_in _ _ _ x Pl2) as [xa | ?]; auto.
+    now apply usubl'; right.
+  now case nsa; rewrite <- xa.
+rewrite (remove_length  _ _ _ Pl2); simpl.
+enough (length l <= length l2) by lia.
+now destruct en as [_ it]; apply it.
+Qed.
+
 Lemma card_add_elem [T : Type] (s : T -> Prop) (a : T):
   finite s -> ~ s a -> card (union (singleton a) s ) = card s + 1.
 Proof.
@@ -407,49 +428,79 @@ apply Pcard_card.
 exact card_add.
 Qed.
 
+Lemma Penum_ext [T : Type] (s1 s2 : T -> Prop) l :
+  (forall x, s1 x <-> s2 x) -> Penum s1 l <-> Penum s2 l.
+Proof.
+enough (main: forall (s s' : T -> Prop), (forall x, s x <-> s' x) ->
+          Penum s l -> Penum s' l).
+intros exteq; split; intros en.
+  now apply (main s1); auto.
+now apply (main s2); auto; intros x; apply and_comm; apply exteq.
+clear s1 s2; intros s1 s2 exteq en1.
+split.
+  intros x; rewrite <- exteq; destruct en1 as [it _]; apply it.
+intros l' s2subl'; assert (step : forall x, s1 x -> In x l').
+  now intros x s1x; apply s2subl'; rewrite <- exteq.
+now destruct en1 as [_ it]; apply it.
+Qed.
+
+Lemma Pcard_ext [T : Type] (s1 s2 : T -> Prop) n :
+  (forall x, s1 x <-> s2 x) -> Pcard s1 n <-> Pcard s2 n.
+Proof.
+intros s1s2; split; intros [[l [sl Pn]] Pc2].
+  assert (s2l : forall x, s2 x -> In x l).
+    now intros x; rewrite <- s1s2; apply sl.
+  split; [exists l; auto |].
+  intros l' s'l'; apply Pc2; intros x; rewrite s1s2; auto.
+assert (s1l : forall x, s1 x -> In x l).
+    now intros x; rewrite s1s2; apply sl.
+split; [exists l; auto |].
+intros l' s'l'; apply Pc2; intros x; rewrite <- s1s2; auto.
+Qed.
+
+Lemma finite_ext [T : Type] (s1 s2 : T -> Prop) :
+ (forall x, s1 x <-> s2 x) -> finite s1 <-> finite s2.
+Proof.
+intros s1s2; split; intros [l sl]; exists l; intros x; rewrite 1?s1s2; auto.
+now rewrite <- s1s2; auto.
+Qed.
+
+Lemma card_ext [T : Type] (s1 s2 : T -> Prop) :
+  finite s1 -> (forall x, s1 x <-> s2 x) -> card s1 = card s2.
+Proof.
+intros fs s1s2.
+rewrite finite_has_minimal_list in fs; destruct fs as [l Pl1].
+assert (Pl2 := Pl1); rewrite (Penum_ext _ _ _ s1s2) in Pl2.
+now rewrite (enum_card _ _ Pl1), (enum_card _ _ Pl2).
+Qed.
+
+Lemma union_intersection_singleton [T : Type](s : T -> Prop) (a : T) :
+  finite s ->
+  s a ->
+  forall x, union (singleton a) (intersection s (compl (singleton a))) x <->
+            s x.
+Proof.
+intros fs sa x; split.
+  now intros [ xa | [xs _]]; auto; rewrite xa.
+intros sx; case (classic (x = a)).
+  intros xa; rewrite xa; left; reflexivity.
+now intros xna; right; split; auto.
+Qed.
+
 Lemma card_inter_compl [T : Type] (s : T -> Prop) (a : T):
  finite s ->
- s a -> card (intersection s (compl (singleton a)) )= card s -1.
+ s a -> card (intersection s (compl (singleton a)) )= card s - 1.
 Proof.
 intros fs sa.
-assert (exists l, Penum s l) as [l Pl].
-  now rewrite <- finite_has_minimal_list.
-assert (csl := enum_card _ _ Pl).
-assert (exists l1, elem_removed a l1 l) as [l' Pl'].
-  apply remove_elem.
-  now destruct Pl as [it _]; apply it.
-assert (len_rel := remove_length _ _ _ Pl').
-rewrite csl.
-rewrite len_rel.
-replace (S (length l') - 1) with (length l') by lia.
-apply enum_card.
-split.
-  intros x [xins xnota].
-  assert (xinl : In x l).
-  now destruct Pl as [it _]; apply it.
-  destruct (elem_removed_in _ _ _ _ Pl' xinl).
-    case xnota; assumption.
-  assumption.
-intros l2.
-intros Pl2.
-set (l3 := a :: l2).
-assert (ssubl3 : forall x, s x -> In x l3).
-  intros x.
-  intros sx.
-  unfold l3.
-  case (classic (x = a)).
-    simpl.
-    intros xa; rewrite xa; left; auto.
-   intros xnota.
-   simpl; right.
-    apply Pl2; split.
-      assumption.
-    assumption.
-   assert (length l <= length l3).
-  
-
-Admitted.
-
+assert (ext : forall x, s x <->
+                 union (singleton a) (intersection s (compl (singleton a))) x).
+  intros x; apply and_comm.
+  apply union_intersection_singleton; auto.
+rewrite (card_ext _ _ fs ext).
+rewrite card_add_elem;[ lia | | ].
+  now apply Intersection_preserves_Finite; left.
+intros [_ it]; case it; reflexivity.
+Qed.
 
 Lemma card_union [T : Type] (s1 s2 : T -> Prop) :
   finite s1 -> finite s2 ->
