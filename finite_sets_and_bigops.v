@@ -1,17 +1,22 @@
 Require Import List Arith Classical ClassicalEpsilon Lia.
 
 Section FiniteSetOperation.
+
 Definition finite [T : Type] (s : T -> Prop) := 
   exists l : list T, forall x, s x -> In x l.
 
 Definition singleton [T : Type](x:T) :=
   fun y => y=x.
+
 Definition union[T : Type] (s1 s2:T -> Prop) :=
     fun x => s1 x \/ s2 x.
+
 Definition intersection [T : Type] (s1:T -> Prop)(s2:T -> Prop) :=
     fun x => s1 x /\ s2 x.
+
 Definition compl [T : Type] (s : T -> Prop)(x : T) :=
   not(s x).
+
 Lemma union_comm [T : Type] (s1 s2:T -> Prop):
 forall x:T ,(union s1 s2) x  <->(union s2 s1)x .
 Proof.
@@ -41,7 +46,7 @@ unfold finite.
 exists (a::nil); intros x H.
 simpl; auto.
 Qed.
-
+  
 Lemma Union_preserves_Finite [T : Type](s1 : T -> Prop)(s2 : T -> Prop):
 (finite s1 /\ finite s2)  <-> finite (union s1 s2).  
 Proof.
@@ -88,6 +93,7 @@ Qed.
 End FiniteSetOperation.
 
 Section Cardinal.
+
 Definition Pcard [T : Type] (s : T -> Prop) (n : nat) :=
  (exists l, (forall x, s x -> In x l) /\ n = length l) /\
  (forall l, (forall x, s x -> In x l) -> n <= length l).
@@ -97,18 +103,10 @@ Definition card [T : Type] (s : T -> Prop) :=
 
 Lemma card_def: forall [T : Type] (s : T -> Prop),
   (exists n, Pcard s n) -> Pcard s (card s).
-(*
-Lemma card_def: forall T : Type, forall s : T-> Prop, (exists n:nat,
- (exists l,  (forall x, s x -> In x l) /\ n = length l) /\
-        (forall l, (forall x, s x -> In x l) -> n <= length l))-> 
-(exists l,  (forall x, s x -> In x l) /\ card s = length l) /\
-        (forall l, (forall x, s x -> In x l) -> card s <= length l).
-*)
 Proof.
 intros T s.
 apply epsilon_spec.
 Qed.
-About epsilon_spec .
 
 Lemma card_0[T: Type]: forall s: T-> Prop, ( forall x ,~s x)-> card s = 0.
 Proof.
@@ -269,6 +267,9 @@ Qed.
 End Cardinal.
 
 Section Enumeration.
+
+(* When does a list enumerate all elements of a finite set. *)
+
 Definition Penum [T : Type] (s : T -> Prop) (l : list T) :=
  (forall x, s x -> In x l) /\
  (forall l',  (forall x, s x -> In x l') -> length l <= length l').
@@ -278,18 +279,10 @@ Definition enum [T : Type] (s : T -> Prop) :=
 
 Lemma enum_def: forall [T : Type](s : T-> Prop),
 (exists l:list T, Penum s l) -> Penum s (enum s). 
-(*(exists l:list T,
-((forall x, s x -> In x l) /\
- (forall l',  (forall x, s x -> In x l') -> length l <= length l')))->
-(forall x, s x -> In x (enum s)) /\
- (forall l',  (forall x, s x -> In x l') -> length (enum s) <= length l').*)
 Proof.
 intros T s.
-unfold enum.
 apply epsilon_spec.
 Qed.
-
-
 
 Lemma finite_has_minimal_list [T : Type] (s : T -> Prop) :
   finite s <-> exists l, Penum s l.
@@ -331,7 +324,6 @@ rewrite <- cardv in Pl'.
 lia.
 Qed.
 
-
 Lemma finite_enum_card [T : Type] (s : T -> Prop) :
   finite s -> card s = length (enum s).
 Proof.
@@ -339,28 +331,6 @@ intros fs.
 apply enum_card.
 apply enum_def.
 now rewrite <- finite_has_minimal_list.
-Qed.
-
-Lemma finite_enum_included [T : Type](s : T -> Prop):
-  finite s -> (forall x, In x (enum s) -> s x).
-Proof.
-intros fs x H.
-assert (enum_tmp := fs).
-rewrite (finite_has_minimal_list s ) in enum_tmp.
-assert (tmp' := enum_def _ enum_tmp).
-destruct tmp' as [tmpH1' tmpH2'].
-destruct (remove_elem x (enum s) H) as [l1 Pl1].
-case (classic (s x)); auto.
-intros nsx.
-assert (sincludedl1 : forall y: T , s y -> In y l1).
-intros y sy.
-assert (tmp := elem_removed_in x l1 (enum s) y Pl1 (tmpH1' y sy)).
-destruct tmp as [yx | It ]; auto.
-case ( nsx ).
-rewrite <- yx ;auto.
-apply tmpH2' in sincludedl1.
-assert (tmpl := remove_length x l1 (enum s) Pl1).
-lia.
 Qed.
 
 Lemma Penum_finite[T : Type](s : T -> Prop)(l : list T):
@@ -371,14 +341,47 @@ destruct ensl as [H H0].
 exact H.
 Qed.
 
-(*
-Lemma Penum_equal [T : Type](s1 s2 : T -> Prop)(x : T)(l : list T):
- (s1 x<->s2 x) <-> (Penum s1 l <-> Penum s2 l). is wrong.We can see the details in
-counterexemple.v
-*)
+Lemma Penum_included [T : Type] (s : T -> Prop) (l : list T) :
+  Penum s l -> forall x, In x l -> s x.
+Proof.
+intros Ph x H.
+destruct Ph as [fsH H1].
+assert(fs : finite s).
+now apply (Penum_finite s l).
+rewrite (finite_has_minimal_list s ) in fs.
+assert (tmp' := enum_def _ fs).
+destruct tmp' as [tmpH1' tmpH2'].
+assert (eqle:length l = length (enum s) ).
+now apply H1 in tmpH1';apply tmpH2' in fsH;lia.
+destruct (remove_elem x l H) as [l1 Pl1].
+case (classic (s x)); auto.
+intros nsx.
+assert (sincludedl1 : forall y: T , s y -> In y l1).
+intros y sy.
+assert (tmp := elem_removed_in x l1 l y Pl1 (fsH y sy)).
+destruct tmp as [yx | It ]; auto.
+case ( nsx ).
+rewrite <- yx ;auto.
+apply tmpH2' in sincludedl1.
+assert (tmpl := remove_length x l1 l Pl1).
+rewrite eqle in tmpl.
+lia.
+Qed.
+
+Lemma finite_enum_included [T : Type](s : T -> Prop):
+  finite s -> (forall x, In x (enum s) -> s x).
+Proof.
+intros fs x H.
+rewrite (finite_has_minimal_list s ) in fs.
+apply (Penum_included s (enum s)).
+apply enum_def;auto.
+auto.
+Qed.
+
 End Enumeration.
 
 Section FiniteSetFacts.
+
 Lemma card_not_0_has_elem [T : Type](s : T -> Prop):
 finite s -> card s <> 0 -> exists a : T , s a.
 Proof.
@@ -502,11 +505,160 @@ rewrite card_add_elem;[ lia | | ].
 intros [_ it]; case it; reflexivity.
 Qed.
 
+Lemma empty_union [T : Type] (s1 s2 : T -> Prop) :
+  (forall x, ~ s1 x) ->
+   (forall x, union s1 s2 x <-> s2 x).
+Proof.
+intros s1empty.
+intros x; split; intros xin.
+  destruct xin as [abs | it]; auto.
+  now case (s1empty x); auto.
+now right; auto.
+Qed.
+
+Lemma Penum_rem_elem [T : Type] (s : T -> Prop) (a : T) (l : list T) :
+  Penum s (a :: l) -> Penum (intersection (compl (singleton a)) s) l.
+Proof.
+intros sal.
+split.
+  intros x; case (classic (x = a)).
+    intros xa; rewrite xa; intros [abs _]; case abs; reflexivity.
+  intros xna [xna' sx]; destruct sal as [sal1 _]; apply sal1 in sx.
+  simpl in sx; destruct sx as [ax | it]; auto.
+  case xna; rewrite ax; reflexivity.
+intros l' l'ctn.
+assert (coverl' : forall x, s x -> In x (a :: l')).
+  intros x sx; case (classic (a = x)).
+    now intros ax; rewrite ax; simpl; auto.
+  intros anx; simpl; right.
+  apply l'ctn; split; [ | exact sx].
+  now intros sgax; case anx; rewrite sgax.
+destruct sal as [sal1 sal2]; apply sal2 in coverl'.
+simpl in coverl'; lia.
+Qed.
+
+Lemma card_included_le [T : Type] (s1 s2 : T -> Prop) :
+  finite s1 -> finite s2 ->
+  (forall x, s1 x -> s2 x) ->
+  card s1 <= card s2.
+Proof.
+intros f1 f2 incl.
+assert (f1' := f1).
+apply finite_Pcard in f1'.
+destruct f1' as [n Pc1].
+rewrite (Pcard_card _ _ Pc1).
+destruct Pc1 as [_ nmin].
+rewrite (finite_enum_card _ f2).
+apply nmin.
+intros x s1x; apply incl in s1x.
+assert (Penum s2 (enum s2)) as [P2 _].
+  apply enum_def.
+  now rewrite <- finite_has_minimal_list.
+now apply P2.
+Qed.
+
 Lemma card_union [T : Type] (s1 s2 : T -> Prop) :
   finite s1 -> finite s2 ->
   card (union s1 s2) = card s1 + card s2 - card (intersection s1 s2).
 Proof.
-Admitted.
+rewrite finite_has_minimal_list.
+intros [l1 h1].
+revert s1 h1.
+induction l1 as [ | a l1 Ihl1].
+intros s1 s1init fs2.
+assert (s1empty : forall x, ~ s1 x).
+  now intros x s1x; destruct s1init as [A _]; case (A x).
+assert (interempty : forall x, ~ (intersection s1 s2 x)).
+  intros x ix; destruct s1init as [A _]; case (A x).
+  destruct ix; auto.
+  rewrite (card_0 _ s1empty), (card_0 _ interempty).
+  replace (0 + card s2 - 0) with (card s2) by lia.
+  apply card_ext.
+  apply Union_preserves_Finite.
+  assert(fs1: finite s1).
+  now apply finite_0 in s1empty.
+  auto.
+  now apply empty_union.
+intros s1 s1al1 fs2.
+assert (f1 : finite s1) by now apply Penum_finite in s1al1.
+assert (a1 : s1 a) by now apply (Penum_included _ _ s1al1); left.
+set (s1' := intersection (compl (singleton a)) s1).
+assert (s1'l1 : Penum s1' l1).
+  now assert ( s1'i := Penum_rem_elem _ _ _ s1al1).
+assert (fu : finite (union s1 s2)) by now apply Union_preserves_Finite.
+assert (fi : finite (intersection s1 s2)).
+  now apply Intersection_preserves_Finite; right.
+assert (cs1 : card s1 = card s1' + 1).
+  assert (same1 : forall x, s1 x <-> union (singleton a) s1' x).
+    intros x; split.
+      case (classic (singleton a x)); unfold union; auto.
+      now intros nax; right; split; auto.
+    intros [ax | [nax s1x]]; auto.
+    now apply (Penum_included _ _ s1al1); left.
+  rewrite (card_ext _ _ f1 same1).
+  apply card_add_elem.
+    now apply Intersection_preserves_Finite; right.
+  now intros [ [] _].
+case (classic (s2 a)).
+  intros ains2.
+  assert (same: forall x, union s1 s2 x <-> union s1' s2 x).
+    intros x; case (classic (x = a)).
+      now intros xa; rewrite xa; split; intros dummy; right.
+    intros xna; split; (intros [s1x | s2x]; [ | right; easy]).
+      left; split; [exact xna | exact s1x].
+    now left; destruct s1x as [_ it].
+  rewrite (card_ext _ _ fu same).
+  rewrite (Ihl1 _ s1'l1 fs2).
+  assert (ai : intersection s1 s2 a) by now split; auto.
+  assert (samei : forall x, intersection s1 s2 x <->
+           union (singleton a) (intersection s1' s2) x).
+    intros x; split.
+      intros [s1x s2x]; case (classic (x = a)).
+        intros xa; rewrite xa; left; reflexivity.
+      now intros xna; right; split; auto; split.
+    intros [ax | xi].
+      now split; auto; rewrite ax.
+    now destruct xi as [[_ s1'x] s2x]; split; auto.
+  assert (cs1s2 : card (intersection s1 s2) = card (intersection s1' s2) + 1).
+    rewrite (card_ext _ _ fi samei), card_add_elem; auto.
+      now apply Intersection_preserves_Finite; right.
+    now intros [[abs _] _]; case abs.
+  rewrite cs1s2.
+  rewrite cs1.
+  replace (card s1' + 1 + card s2) with (card s1' + card s2 + 1) by ring.
+  lia.
+intros ans2.
+assert (sameu : forall x, union s1 s2 x <->
+                          union (singleton a) (union s1' s2) x).
+  intros x; split.
+    case (classic (singleton a x)).
+      now intros ax s1s2x; left.
+    now intros nax [s1x | s2x]; unfold union; auto; right; left; split; auto.
+  now intros [ax |[[nax s1x] | s2x]]; unfold union; auto; left; rewrite ax.
+rewrite (card_ext _ _ fu sameu).
+assert (fu' : finite (union s1' s2)).
+  apply Union_preserves_Finite; split; auto.
+  now apply Intersection_preserves_Finite; right.
+assert (anu' : ~ union s1' s2 a).
+  now intros [[[] _]| s2a];[ | case ans2; auto].
+rewrite card_add_elem; auto.
+assert (samei : forall x, intersection s1 s2 x <-> intersection s1' s2 x).
+  intros x; split.
+    case (classic (singleton a x)).
+      now intros ax [_ s2x]; case ans2; rewrite <- ax.
+    now intros anx [s1x s2x];split; auto; split; auto.
+  now intros [[anx s1x] s2x]; split; auto.
+rewrite (Ihl1 _ s1'l1); auto.
+rewrite (card_ext _ _ fi samei).
+rewrite cs1.
+assert (iincl : forall x, intersection s1' s2 x -> s2 x).
+  now intros x [_ it].
+assert (fi' : finite (intersection s1' s2)).
+  now apply Intersection_preserves_Finite; right.
+assert (cmpcard := card_included_le _ _ fi' fs2 iincl).
+lia.
+Qed.
+
 End FiniteSetFacts.
 
 
